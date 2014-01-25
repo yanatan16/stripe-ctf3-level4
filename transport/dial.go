@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var unix *regexp.Regexp = regexp.MustCompile("^[/a-zA-Z0-9\\.]*$")
+var unix *regexp.Regexp = regexp.MustCompile("^[/a-zA-Z0-9\\.\\-]*$")
 
 func UnixDialer(_, encoded string) (net.Conn, error) {
 	decoded := Decode(encoded)
