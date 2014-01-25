@@ -90,6 +90,19 @@ OPTIONS:
 		}
 	}
 
+
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Error while getting working directory: %s", err)
+	}
+
+	if join != "" && join[0] == '.' {
+		join = filepath.Join(dir, join)
+	}
+	if listen != "" && listen[0] == '.' {
+		listen = filepath.Join(dir, listen)
+	}
+
 	log.Printf("Changing directory to %s", directory)
 	if err := os.Chdir(directory); err != nil {
 		log.Fatalf("Error while changing to storage directory: %s", err)
@@ -110,10 +123,6 @@ OPTIONS:
 		s, err := server.New(directory, listen)
 		if err != nil {
 			log.Fatal(err)
-		}
-
-		if join != "" && join[0] == '.' {
-			join = filepath.Join(directory, join)
 		}
 
 		if err := s.ListenAndServe(join); err != nil {
