@@ -96,17 +96,17 @@ OPTIONS:
 		log.Fatalf("Error while getting working directory: %s", err)
 	}
 
-	if join != "" && join[0] == '.' {
-		join = filepath.Join(dir, join)
-	}
-	if listen != "" && listen[0] == '.' {
-		listen = filepath.Join(dir, listen)
-	}
+	// if join != "" && join[0] == '.' {
+	// 	join = filepath.Join(dir, join)
+	// }
+	// if listen != "" && listen[0] == '.' {
+	// 	listen = filepath.Join(dir, listen)
+	// }
 
-	log.Printf("Changing directory to %s", directory)
-	if err := os.Chdir(directory); err != nil {
-		log.Fatalf("Error while changing to storage directory: %s", err)
-	}
+	// log.Printf("Changing directory to %s", directory)
+	// if err := os.Chdir(directory); err != nil {
+	// 	log.Fatalf("Error while changing to storage directory: %s", err)
+	// }
 
 	// Make sure we don't leave stranded sqlclusters lying around
 	go func() {
