@@ -112,7 +112,7 @@ OPTIONS:
 			log.Fatal(err)
 		}
 
-		if join != "" {
+		if join != "" && join[0] == '.' {
 			join = filepath.Join(directory, join)
 		}
 

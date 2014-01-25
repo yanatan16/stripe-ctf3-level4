@@ -125,11 +125,8 @@ func (s *Server) sqlHandler(w http.ResponseWriter, req *http.Request) {
 	log.Debugf("[%s] Received query: %#v", s.consensus.State(), sqry)
 
 	var output *sql.Output
-	if s.isWrite(query) {
-		output, err = s.consensus.Query(sqry)
-	} else {
-		output, err = s.sql.Execute(s.consensus.State(), sqry)
-	}
+	output, err = s.consensus.Query(sqry)
+	// output, err = s.sql.Execute(s.consensus.State(), sqry)
 
 	resp, err := s.formatExec(sqry, output, err)
 	if err != nil {

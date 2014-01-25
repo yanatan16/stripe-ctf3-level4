@@ -12,6 +12,7 @@ import (
   "fmt"
   "errors"
   "io"
+  "time"
 )
 
 type Server struct {
@@ -23,9 +24,9 @@ type Server struct {
 func New(name, path, connstr string, db *sql.SQL, mux raft.HTTPMuxer, client *transport.Client) (*Server, error) {
   log.Println("Initializing Raft Server:", name, path, connstr)
 
-  if log.Verbose() {
-    raft.SetLogLevel(raft.Trace)
-  }
+  // if log.Verbose() {
+  //   raft.SetLogLevel(raft.Trace)
+  // }
 
   transporter := raft.NewHTTPTransporter("/raft")
   transporter.Transport.Dial = client.Transport().Dial
@@ -36,6 +37,9 @@ func New(name, path, connstr string, db *sql.SQL, mux raft.HTTPMuxer, client *tr
   if err != nil {
     return nil, err
   }
+
+  raftServer.SetElectionTimeout(99 * time.Millisecond)
+  raftServer.SetHeartbeatTimeout(33 * time.Millisecond)
 
   transporter.Install(raftServer, mux)
 
