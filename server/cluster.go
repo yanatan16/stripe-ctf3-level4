@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"stripe-ctf.com/sqlcluster/log"
+	"sort"
 )
 
 type ServerAddress struct {
@@ -71,12 +72,24 @@ func (c *Cluster) PerformFailover() {
 		log.Fatalf("Trying to fail over even though my state is %s", state)
 	}
 
-	c.primary = c.members[0]
-	c.members = c.members[1:]
+	c.primary, c.members = Promote(c.members)
 
 	if c.State() == "primary" {
 		log.Printf("I am the the primary now.")
 	} else {
 		log.Printf("Promoted %s to primary. My time will come one day.", c.primary.Name)
 	}
+}
+
+type PromotionOrdering []ServerAddress
+func (po PromotionOrdering) Len() int { return len(po) }
+func (po PromotionOrdering) Swap(i, j int) { po[i], po[j] = po[j], po[i] }
+func (po PromotionOrdering) Less(i, j int) bool {
+	return po[i].Name < po[j].Name
+}
+
+func Promote(members []ServerAddress) (ServerAddress, []ServerAddress) {
+	po := PromotionOrdering(members)
+	sort.Sort(po)
+	return po[0], po[1:]
 }
