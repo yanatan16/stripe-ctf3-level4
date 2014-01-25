@@ -12,6 +12,7 @@ import (
 	"stripe-ctf.com/sqlcluster/transport"
 	"stripe-ctf.com/sqlcluster/util"
 	"time"
+	"regexp"
 )
 
 type Server struct {
@@ -23,6 +24,7 @@ type Server struct {
 	sql        *sql.SQL
 	client     *transport.Client
 	cluster    *Cluster
+	replQuery  *regexp.Regexp
 }
 
 type Join struct {
@@ -53,6 +55,11 @@ func New(path, listen string) (*Server, error) {
 	sqlPath := filepath.Join(path, "storage.sql")
 	util.EnsureAbsent(sqlPath)
 
+	rq, err := regexp.Compile("(CREATE|INSERT)")
+	if err != nil {
+		return nil, err
+	}
+
 	s := &Server{
 		path:    path,
 		listen:  listen,
@@ -60,6 +67,7 @@ func New(path, listen string) (*Server, error) {
 		router:  mux.NewRouter(),
 		client:  transport.NewClient(),
 		cluster: NewCluster(path, cs),
+		replQuery: rq,
 	}
 
 	return s, nil
@@ -191,6 +199,18 @@ func (s *Server) sqlHandler(w http.ResponseWriter, req *http.Request) {
 	resp, err := s.execute(query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.replicate(query)
+
+	log.Debugf("[%s] Returning response to %#v: %#v", s.cluster.State(), string(query), string(resp))
+	w.Write(resp)
+}
+
+func (s *Server) replicate(query []byte) {
+	if (s.replQuery.Find(query) == nil) {
+		return
 	}
 
 	r := &Replicate{
@@ -204,9 +224,6 @@ func (s *Server) sqlHandler(w http.ResponseWriter, req *http.Request) {
 			log.Printf("Couldn't replicate query to %v: %s", member, err)
 		}
 	}
-
-	log.Debugf("[%s] Returning response to %#v: %#v", s.cluster.State(), string(query), string(resp))
-	w.Write(resp)
 }
 
 func (s *Server) replicationHandler(w http.ResponseWriter, req *http.Request) {
