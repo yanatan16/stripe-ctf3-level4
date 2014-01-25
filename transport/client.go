@@ -31,6 +31,10 @@ func NewClient() *Client {
 	}
 }
 
+func (c *Client) Transport() *http.Transport {
+	return c.client.Transport.(*http.Transport)
+}
+
 func (s *Client) SafePost(connectionString, path string, reqB io.Reader) (io.Reader, error) {
 	url := connectionString + path
 	resp, err := s.client.Post(url, "application/octet-stream", reqB)

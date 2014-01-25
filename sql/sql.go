@@ -48,7 +48,7 @@ func (sql *SQL) Execute(tag string, command string) (*Output, error) {
 	defer sql.mutex.Unlock()
 
 	defer func() { sql.sequenceNumber += 1 }()
-	if tag == "primary" || log.Verbose() {
+	if tag == "leader" || log.Verbose() {
 		log.Printf("[%s] [%d] Executing %#v", tag, sql.sequenceNumber, command)
 	}
 
