@@ -112,6 +112,10 @@ OPTIONS:
 			log.Fatal(err)
 		}
 
+		if join != "" {
+			join = filepath.Join(directory, join)
+		}
+
 		if err := s.ListenAndServe(join); err != nil {
 			log.Fatal(err)
 		}
