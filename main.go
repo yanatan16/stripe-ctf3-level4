@@ -91,10 +91,11 @@ OPTIONS:
 	}
 
 
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Error while getting working directory: %s", err)
-	}
+	// dir, err := os.Getwd()
+	// if err != nil {
+	// 	log.Fatalf("Error while getting working directory: %s", err)
+	// }
+	// log.Printf("Current dir: %s\n", dir)
 
 	// if join != "" && join[0] == '.' {
 	// 	join = filepath.Join(dir, join)
@@ -103,10 +104,10 @@ OPTIONS:
 	// 	listen = filepath.Join(dir, listen)
 	// }
 
-	// log.Printf("Changing directory to %s", directory)
-	// if err := os.Chdir(directory); err != nil {
-	// 	log.Fatalf("Error while changing to storage directory: %s", err)
-	// }
+	log.Printf("Changing directory to %s", directory)
+	if err := os.Chdir(directory); err != nil {
+		log.Fatalf("Error while changing to storage directory: %s", err)
+	}
 
 	// Make sure we don't leave stranded sqlclusters lying around
 	go func() {
