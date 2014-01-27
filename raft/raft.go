@@ -13,12 +13,27 @@ import (
   "errors"
   "io"
   "time"
+  "math/rand"
 )
+
+// TODO Make a way for a follower to listen on the log for his entry
 
 type Server struct {
   raft.Server
   connectionString string
   client *transport.Client
+}
+
+func (s *Server) LeaderCS() (string, error) {
+  leader := s.Leader()
+  if leader == "" {
+    return "", errors.New("No leader known!")
+  }
+
+  if peer, ok := s.Peers()[leader]; ok && peer != nil {
+    return peer.ConnectionString, nil
+  }
+  return "", errors.New("Error. Leader " + leader + " not found!")
 }
 
 func New(name, path, connstr string, db *sql.SQL, mux raft.HTTPMuxer, client *transport.Client) (*Server, error) {
@@ -38,8 +53,8 @@ func New(name, path, connstr string, db *sql.SQL, mux raft.HTTPMuxer, client *tr
     return nil, err
   }
 
-  raftServer.SetElectionTimeout(100 * time.Millisecond)
-  raftServer.SetHeartbeatTimeout(20 * time.Millisecond)
+  raftServer.SetElectionTimeout(150 * time.Millisecond)
+  raftServer.SetHeartbeatTimeout(50 * time.Millisecond)
 
   transporter.Install(raftServer, mux)
 
@@ -83,7 +98,8 @@ func (s *Server) Init(leader string) error {
 }
 
 func (s *Server) Query(query string) (*sql.Output, error) {
-  wc := command.NewWriteCommand(query)
+  key := fmt.Sprintf("%s:%x", s.Name(), rand.Int() % 10000)
+  wc := command.NewWriteCommand(key, query)
 
   log.Debugf("[%s] Executing write command: %v", s.State(), wc)
 

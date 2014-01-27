@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strings"
 	"stripe-ctf.com/sqlcluster/log"
+	"stripe-ctf.com/sqlcluster/recorder"
 	"sync"
 	"syscall"
 )
@@ -13,6 +14,7 @@ type SQL struct {
 	path           string
 	sequenceNumber int
 	mutex          sync.Mutex
+	Recorder *recorder.Recorder
 }
 
 type Output struct {
@@ -24,6 +26,7 @@ type Output struct {
 func NewSQL(path string) *SQL {
 	sql := &SQL{
 		path: path,
+		Recorder: recorder.New(5),
 	}
 	return sql
 }
@@ -42,14 +45,14 @@ func getExitstatus(err error) int {
 	return status.ExitStatus()
 }
 
-func (sql *SQL) Execute(tag string, command string) (*Output, error) {
+func (sql *SQL) Execute(key, tag, command string) (*Output, error) {
 	// TODO: make sure I can catch non-lock issuez
 	sql.mutex.Lock()
 	defer sql.mutex.Unlock()
 
 	defer func() { sql.sequenceNumber += 1 }()
 	if tag == "leader" || log.Verbose() {
-		log.Printf("[%s] [%d] Executing %#v", tag, sql.sequenceNumber, command)
+		log.Printf("[%s] [%d] Executing (%s) %#v", tag, sql.sequenceNumber, key, command)
 	}
 
 	subprocess := exec.Command("sqlite3", sql.path)

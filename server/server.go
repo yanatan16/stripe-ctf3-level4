@@ -12,8 +12,10 @@ import (
 	"stripe-ctf.com/sqlcluster/transport"
 	"stripe-ctf.com/sqlcluster/util"
 	"stripe-ctf.com/sqlcluster/raft"
+	"stripe-ctf.com/sqlcluster/raft/command"
 	"regexp"
 	"os"
+	"math/rand"
 )
 
 type Server struct {
@@ -78,6 +80,7 @@ func (s *Server) ListenAndServe(primary string) error {
 	}
 
 	s.router.HandleFunc("/sql", s.sqlHandler).Methods("POST")
+	s.router.HandleFunc("/fwd", s.fwdHandler).Methods("POST")
 	s.router.HandleFunc("/join", s.joinHandler).Methods("POST")
 
 	// Start Unix transport
@@ -107,26 +110,59 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write(nil)
 }
 
+func (s *Server) forwardRequest(sqry string) (*sql.Output, error) {
+	// http.Error(w, "Cannot serve requests from nonleader", http.StatusBadRequest)
+	// return
+
+	leader, err := s.consensus.LeaderCS()
+	if err != nil {
+		return nil, err
+	}
+	log.Println("Forwarding request to leader", leader)
+
+	wc := &command.WriteCommand{
+		Key: fmt.Sprintf("%s:%x", s.consensus.Name(), rand.Int() % 100000),
+		Query: sqry,
+	}
+  b := util.JSONEncode(wc)
+
+  if _, err := s.client.SafePost(leader, "/fwd", b); err != nil {
+  	if _, ok := err.(*transport.RequestError); ok {
+	  	return nil, err
+	  }
+	}
+
+	keyer, err := s.sql.Recorder.Listen(wc.Key, 200)
+	if err != nil {
+		return nil, errors.New("Could not contact master!")
+	} else {
+		wr := keyer.(*command.WriteRecord)
+		return wr.Output, wr.Error
+	}
+}
+
 // This is the only user-facing function, and accordingly the body is
 // a raw string rather than JSON.
 func (s *Server) sqlHandler(w http.ResponseWriter, req *http.Request) {
-	state := s.consensus.State()
-	if state != "leader" {
-		http.Error(w, "Only the leader can service queries, but this is a "+state, http.StatusBadRequest)
-		return
-	}
-
 	query, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("Couldn't read body: %s", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	sqry := string(query)
-	log.Debugf("[%s] Received query: %#v", s.consensus.State(), sqry)
+	log.Debugf("[%s] Received query: %#v", s.consensus.Name(), sqry)
 
 	var output *sql.Output
-	output, err = s.consensus.Query(sqry)
-	// output, err = s.sql.Execute(s.consensus.State(), sqry)
+	state := s.consensus.State()
+	if state == "follower" {
+		output, err = s.forwardRequest(sqry)
+	} else if state != "leader" {
+		http.Error(w, "Not follower and not leader; cannot accept requests now.", http.StatusInternalServerError)
+		return
+	} else {
+		output, err = s.consensus.Query(sqry)
+	}
 
 	resp, err := s.formatExec(sqry, output, err)
 	if err != nil {
@@ -136,6 +172,30 @@ func (s *Server) sqlHandler(w http.ResponseWriter, req *http.Request) {
 
 	log.Debugf("[%s] Returning response to %#v: %#v", s.consensus.State(), string(query), string(resp))
 	w.Write(resp)
+}
+
+func (s *Server) fwdHandler(w http.ResponseWriter, req *http.Request) {
+	state := s.consensus.State()
+	if state != "leader" {
+		http.Error(w, "Not the leader; cannot accept forwarded requests now.", http.StatusInternalServerError)
+		return
+	}
+
+	wc := &command.WriteCommand{}
+
+  if err := util.JSONDecode(req.Body, wc); err != nil {
+  	http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+	_, err := s.consensus.Do(wc)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write(nil)
 }
 
 func (s *Server) isWrite(query []byte) bool {

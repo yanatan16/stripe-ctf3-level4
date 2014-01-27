@@ -12,12 +12,14 @@ func init() {
 
 // This command writes a value to a key.
 type WriteCommand struct {
+        Key string `json:"key"`
         Query   string `json:"query"`
 }
 
 // Creates a new write command.
-func NewWriteCommand(query string) *WriteCommand {
+func NewWriteCommand(key, query string) *WriteCommand {
         return &WriteCommand{
+                Key: key,
                 Query: query,
         }
 }
@@ -33,5 +35,19 @@ func (c *WriteCommand) Apply(ctx raft.Context) (interface{}, error) {
                 log.Debugf("[%s] Applying WriteCommand %v\n", ctx.Server().State(), c)
         }
         db := ctx.Server().Context().(*sql.SQL)
-        return db.Execute(ctx.Server().State(), c.Query)
+        output, err := db.Execute(c.Key, ctx.Server().State(), c.Query)
+
+        wr := &WriteRecord{c.Key, output, err}
+        db.Recorder.Push(wr)
+
+        return output, err
+}
+
+type WriteRecord struct {
+        KeyS string
+        Output *sql.Output
+        Error error
+}
+func (wr *WriteRecord) Key() string {
+        return wr.KeyS
 }
