@@ -90,13 +90,6 @@ OPTIONS:
 		}
 	}
 
-
-	// dir, err := os.Getwd()
-	// if err != nil {
-	// 	log.Fatalf("Error while getting working directory: %s", err)
-	// }
-	// log.Printf("Current dir: %s\n", dir)
-
 	if join != "" && join[0] == '.' {
 		join = filepath.Join(directory, join)
 	}
