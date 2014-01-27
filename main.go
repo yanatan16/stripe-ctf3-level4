@@ -90,12 +90,12 @@ OPTIONS:
 		}
 	}
 
-	if join != "" && join[0] == '.' {
-		join = filepath.Join(directory, join)
-	}
-	if listen != "" && listen[0] == '.' {
-		listen = filepath.Join(directory, listen)
-	}
+	// if join != "" && join[0] == '.' {
+	// 	join = filepath.Join(directory, join)
+	// }
+	// if listen != "" && listen[0] == '.' {
+	// 	listen = filepath.Join(directory, listen)
+	// }
 
 	log.Printf("Changing directory to %s", directory)
 	if err := os.Chdir(directory); err != nil {
