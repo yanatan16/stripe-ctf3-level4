@@ -53,8 +53,8 @@ func New(name, path, connstr string, db *sql.SQL, mux raft.HTTPMuxer, client *tr
     return nil, err
   }
 
-  raftServer.SetElectionTimeout(120 * time.Millisecond)
-  raftServer.SetHeartbeatTimeout(40 * time.Millisecond)
+  raftServer.SetElectionTimeout(200 * time.Millisecond)
+  raftServer.SetHeartbeatTimeout(70 * time.Millisecond)
 
   transporter.Install(raftServer, mux)
 
